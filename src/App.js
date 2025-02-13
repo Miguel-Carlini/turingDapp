@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import TokenArtifact from "./artifacts/contracts/TuringToken.sol/TuringToken.json";
 
 const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Endereço do contrato
-const contractABI = TokenArtifact.abi;
+const contractABI = TokenArtifact.abi.toString();
 
 export default function TuringDapp() {
     const [contract, setContract] = useState(null);
@@ -52,12 +52,11 @@ export default function TuringDapp() {
             try {
                 // Buscando todos os codinomes do contrato
                 const names = await contract.getAllNames();
-
                 // Pegando os votos para cada codiname
                 const rankingData = await Promise.all(
                     names.map(async (codiname) => {
-                        const votes = await contract.getTuringsForCodiname(codiname);
-                        return { codiname, votes: ethers.utils.formatUnits(votes, 18) }; // Convertendo os votos para o formato legível
+                        const votes = await contract.getTuringsForCodiname(codiname, { blockTag: "latest" });
+                        return { codiname, votes: votes.toString() }; // Convertendo os votos para o formato legível
                     })
                 );
 
@@ -72,8 +71,6 @@ export default function TuringDapp() {
     
     useEffect(() => {
         if (contract) {
-            // Atualizar o ranking quando o contrato for configurado
-            updateRanking();
 
             const handleVoteCast = (voter, amount) => {
                 console.log(`Vote lançado por ${voter}: ${amount} Turings`);
@@ -136,10 +133,10 @@ export default function TuringDapp() {
             alert("Por favor, preencha os campos de Codename e Quantidade.");
             return;
         }
-
         if (contract && account) {
             try {
-                const tx = await contract.issueToken(codename, amount);
+                let converted_amount = (amount * (10**18)).toString();
+                const tx = await contract.issueToken(codename, converted_amount);
                 await tx.wait();
                 alert("Token emitido com sucesso!");
             } catch (error) {
@@ -154,9 +151,14 @@ export default function TuringDapp() {
             alert("Por favor, preencha os campos de Codename e Quantidade.");
             return;
         }
+        if (amount > 2){
+            alert("Limite de 2 Turings.");
+            return;
+        }
         if (contract && account) {
             try {
-                const tx = await contract.vote(codename, amount);
+                let converted_amount = (amount * (10**18)).toString();
+                const tx = await contract.vote(codename, converted_amount);
                 await tx.wait();
                 alert("Voto registrado com sucesso!");
             } catch (error) {
@@ -217,14 +219,14 @@ export default function TuringDapp() {
             <div className="mb-4">
                 <input
                     type="text"
-                    placeholder="Codename"
+                    placeholder="Codinome"
                     value={codename}
                     onChange={(e) => setCodename(e.target.value)}
                     className="p-2 border rounded w-full mb-2"
                 />
                 <input
                     type="text"
-                    placeholder="Quantidade"
+                    placeholder="Turings"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="p-2 border rounded w-full"
