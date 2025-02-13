@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { ethers } from "ethers";
 import TokenArtifact from "./artifacts/contracts/TuringToken.sol/TuringToken.json";
 
-const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3"; // Endereço do contrato
+const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Endereço do contrato
 const contractABI = TokenArtifact.abi;
 
 export default function TuringDapp() {
@@ -81,11 +81,11 @@ export default function TuringDapp() {
             };
 
             const handleTokenEmitido = (voter, codiname, amount) => {
-                console.log(`Token emitido para ${codiname} por ${voter}: ${ethers.utils.formatUnits(amount, 18)} Turings`);
+                console.log(`Token emitido para ${codiname} por ${voter}: ${amount} Turings`);
             };
 
             const handleRecompensaEmitida = (voter, amount) => {
-                console.log(`Recompensa de ${ethers.utils.formatUnits(amount, 18)} Turings emitida para ${voter}`);
+                console.log(`Recompensa de ${amount} Turings emitida para ${voter}`);
             };
 
             const handleCodinomeAutorizado = (account, codiname) => {
@@ -139,7 +139,7 @@ export default function TuringDapp() {
 
         if (contract && account) {
             try {
-                const tx = await contract.issueToken(codename, ethers.utils.parseUnits(amount, 18));
+                const tx = await contract.issueToken(codename, amount);
                 await tx.wait();
                 alert("Token emitido com sucesso!");
             } catch (error) {
@@ -154,10 +154,9 @@ export default function TuringDapp() {
             alert("Por favor, preencha os campos de Codename e Quantidade.");
             return;
         }
-
         if (contract && account) {
             try {
-                const tx = await contract.vote(codename, ethers.utils.parseUnits(amount, 18));
+                const tx = await contract.vote(codename, amount);
                 await tx.wait();
                 alert("Voto registrado com sucesso!");
             } catch (error) {

@@ -58,10 +58,7 @@ contract TuringToken is ERC20 {
     }
 
     modifier onlyOwnerOrProfessora() {
-        if (msg.sender != owner && msg.sender != professora) {
-            emit AcessoNegado(msg.sender, "Somente owner ou professora.");
-            revert("Acesso negado: Somente owner ou professora.");
-        }
+        require(msg.sender != owner && msg.sender != professora,"Somente owner ou professora.");
         _;
     }
 
