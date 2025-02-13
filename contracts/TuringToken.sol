@@ -41,17 +41,18 @@ contract TuringToken is ERC20 {
 
     bool public votingEnabled;
 
-    event VotoEmitido(address indexed votante, address indexed codinome, uint256 quantidade);
-    event RecompensaEmitida(address indexed votante, uint256 quantidade);
-    event AcessoNegado(address indexed account, string reason);
-    event CodinomeAutorizado(address indexed account, string codiname);
+    event TokenEmitido(string indexed codiname, uint256 quantidade);
+    event VotoEmitido(string indexed codinome, uint256 quantidade);
+    event RecompensaEmitida(uint256 quantidade);
     event VotacaoJaAtiva();
     event VotacaoJaDesativada();
-    event TokenEmitido(string indexed codiname, address indexed receiver, uint256 quantidade);
-    event CodinomeInvalido(string codiname);
+    event ApenasOwnerOrProfessora();
+    event ApenasVotanteAutorizado(address indexed votante);
+    event ApenasCodinomeValido(string indexed codiname);
+    event EnderecoInvalido(string indexed codiname);
     event VotouEmSi();
     event TuringAcimaLimite(uint256 quantidade);
-    event JaVotouNoCodinome(string codiname);
+    event JaVotouNoCodinome(string indexed codiname);
 
 
     constructor() ERC20("TuringToken", "TTK") {
@@ -63,6 +64,9 @@ contract TuringToken is ERC20 {
     }
 
     modifier onlyOwnerOrProfessora() {
+        if (msg.sender != owner && msg.sender != professora){
+            emit ApenasOwnerOrProfessora();
+        }
         require(msg.sender == owner || msg.sender == professora,"Somente owner ou professora.");
         _;
     }
@@ -75,9 +79,27 @@ contract TuringToken is ERC20 {
                 break;
             }
         }
+        if (!isAuthorized){
+            emit ApenasVotanteAutorizado(msg.sender);
+        }
         require(isAuthorized, "Acesso negado: Apenas enderecos autorizados podem executar esta funcao.");
         _;
     }
+
+    modifier onlyCodinameValid(string memory codiname){
+        bool isAuthorized = false;
+        for (uint i = 0; i < names.length; i++) {
+            if (keccak256(abi.encodePacked((names[i]))) == keccak256(abi.encodePacked((codiname)))) {
+                isAuthorized = true;
+                break;
+            }
+        }
+        if (!isAuthorized){
+            emit ApenasCodinomeValido(codiname);
+        }
+        require(isAuthorized, "Acesso negado: Apenas enderecos autorizados podem ser votados.");
+        _;
+    } 
 
     modifier isVotingEnabled() {
         require(votingEnabled, "A votacao nao esta ativa.");
@@ -86,6 +108,40 @@ contract TuringToken is ERC20 {
 
     modifier isVotingDisabled() {
         require(!votingEnabled, "A votacao esta ativa.");
+        _;
+    }
+
+    modifier isAdressValid(string memory codiname) {
+        address receiver = codinameAdresses[codiname];
+        if (receiver == address(0)){
+            emit EnderecoInvalido(codiname);
+        }
+        require(receiver != address(0), "Endereco/Codinome invalido.");
+        _;
+    }
+
+    modifier isVotingItself(string memory codiname) {
+        address receiver = codinameAdresses[codiname];
+        if (receiver == msg.sender){
+            emit VotouEmSi();
+        }
+        require(receiver != msg.sender, "Nao eh possivel votar em si mesmo.");
+        _;
+    }
+
+    modifier isTuringQuantityValid(uint256 quantity) {
+        if (quantity > 2 * 10**18){
+            emit TuringAcimaLimite(quantity / (10**18));
+        }
+        require(quantity <= 2 * 10**18,"Quantidade de Turing acima do permitido.");
+        _;
+    }
+
+    modifier isCodinameVoted(string memory codiname) {
+        if (hasVoted[codiname]){
+            emit JaVotouNoCodinome(codiname);
+        }
+        require(!hasVoted[codiname],"Este codinome ja foi votado.");
         _;
     }
 
@@ -105,34 +161,26 @@ contract TuringToken is ERC20 {
         _mint(receiver, amount);
         
         // Emitindo evento de emissão de tokens
-        emit TokenEmitido(codiname, receiver, amount);
+        emit TokenEmitido(codiname, (amount/(10**18)));
     }
 
-    function vote(string memory codiname, uint256 quantity) public onlyAuthorizedAddresses isVotingEnabled() {
+    function vote(string memory codiname, uint256 quantity)
+        public onlyAuthorizedAddresses onlyCodinameValid(codiname) isVotingEnabled isAdressValid(codiname) 
+        isVotingItself(codiname) isTuringQuantityValid(quantity) isCodinameVoted(codiname){
+        
         address receiver = codinameAdresses[codiname];
-        if (receiver == address(0)){
-            emit CodinomeInvalido(codiname);
-        }
-        else if (receiver == msg.sender){
-            emit VotouEmSi();
-        }
-        else if (quantity > 2 * 10**18){
-            emit TuringAcimaLimite(quantity / (10**18));
-        }
-        else if (hasVoted[codiname]){
-            emit JaVotouNoCodinome(codiname);
-        }
-        else{
-            hasVoted[codiname] = true;
+        hasVoted[codiname] = true;
 
-            _mint(receiver, quantity);
-            codinameTurings[codiname] += (quantity / 10**18);
-            emit VotoEmitido(msg.sender, receiver, quantity);
+        _mint(receiver, quantity);
+        uint256 converted_quantity = quantity / (10**18);
+        codinameTurings[codiname] += converted_quantity;
+        emit VotoEmitido(codiname, converted_quantity);
 
-            uint256 recompensa = 0.2 * 10**18;
-            _mint(msg.sender, recompensa);
-            emit RecompensaEmitida(msg.sender, recompensa);
-        }
+        uint256 casaDecimal = 10;
+        uint256 recompensa = (2 / casaDecimal);
+        _mint(msg.sender, recompensa);
+        emit RecompensaEmitida(recompensa);
+
     }
 
     // Função para obter todos os codinomes

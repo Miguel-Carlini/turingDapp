@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import TokenArtifact from "./artifacts/contracts/TuringToken.sol/TuringToken.json";
 
 const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Endereço do contrato
-const contractABI = TokenArtifact.abi.toString();
+const contractABI = TokenArtifact.abi;
 
 export default function TuringDapp() {
     const [contract, setContract] = useState(null);
@@ -33,18 +33,24 @@ export default function TuringDapp() {
     };
 
     useEffect(() => {
+        const handleAccountsChanged = (accounts) => {
+            if (accounts.length > 0) {
+                setAccount(accounts[0]);
+                const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = web3Provider.getSigner();
+                setContract(new ethers.Contract(contractAddress, contractABI, signer));
+            }
+        };
+    
         if (window.ethereum) {
-            const checkAccount = async () => {
-                const accounts = await window.ethereum.request({ method: "eth_accounts" });
-                if (accounts.length > 0) {
-                    setAccount(accounts[0]);
-                    const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-                    const signer = web3Provider.getSigner();
-                    setContract(new ethers.Contract(contractAddress, contractABI, signer));
-                }
-            };
-            checkAccount();
+            window.ethereum.on("accountsChanged", handleAccountsChanged);
         }
+    
+        return () => {
+            if (window.ethereum) {
+                window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+            }
+        };
     }, []);
 
     const updateRanking = useCallback(async () => {
@@ -72,21 +78,19 @@ export default function TuringDapp() {
     useEffect(() => {
         if (contract) {
 
-            const handleVoteCast = (voter, amount) => {
-                console.log(`Vote lançado por ${voter}: ${amount} Turings`);
+            updateRanking();
+
+            const handleVotoEmitido = (codiname, amount) => {
+                console.log(`Voto emitido para ${codiname}: ${amount} Turings`);
                 updateRanking();
             };
 
-            const handleTokenEmitido = (voter, codiname, amount) => {
-                console.log(`Token emitido para ${codiname} por ${voter}: ${amount} Turings`);
+            const handleTokenEmitido = (codiname, amount) => {
+                console.log(`Token emitido para ${codiname}: ${amount} Turings`);
             };
 
-            const handleRecompensaEmitida = (voter, amount) => {
-                console.log(`Recompensa de ${amount} Turings emitida para ${voter}`);
-            };
-
-            const handleCodinomeAutorizado = (account, codiname) => {
-                console.log(`Codinome autorizado: ${codiname} para ${account}`);
+            const handleRecompensaEmitida = (amount) => {
+                console.log(`Recompensa de ${amount} Turings emitida`);
             };
 
             const handleVotacaoAtiva = () => {
@@ -97,33 +101,60 @@ export default function TuringDapp() {
                 console.log("A votação foi desativada.");
             };
 
+            const handleApenasOwnerOrProfessora = () => {
+                console.log("Permitido apenas para owner e professora");
+            };
             
-            // Remover listeners antigos de eventos e adicionando novos
-            contract.off("VotoEmitido", handleVoteCast); 
-            contract.on("VotoEmitido", handleVoteCast);
+            const handleApenasVotanteAutorizado = (votante) => {
+                console.log(`${votante} nao esta autorizado a votar`);
+            };
 
-            contract.off("TokenEmitido", handleTokenEmitido);
+            const handleApenasCodinomeValido = (codiname) => {
+                console.log(`${codiname} eh invalido.`);
+            };
+            
+            const handleEnderecoInvalido = (codiname) => {
+                console.log(`Endereco do ${codiname} eh invalido`);
+            };
+
+            const handleVotouEmSi = () => {
+                console.log("Nao eh possivel votar em si mesmo.");
+            };
+
+            const handleTuringAcimaLimite = (quantidade) => {
+                console.log("Quantidade de Turing acima do permitido");
+            };
+
+            const handleJaVotouNoCodinome = (codiname) => {
+                console.log(`O ${codiname} ja foi votado.`);
+            };
+
+            contract.on("VotoEmitido", handleVotoEmitido);
             contract.on("TokenEmitido", handleTokenEmitido);
-
-            contract.off("RecompensaEmitida", handleRecompensaEmitida); 
             contract.on("RecompensaEmitida", handleRecompensaEmitida);
-
-            contract.off("CodinomeAutorizado", handleCodinomeAutorizado); 
-            contract.on("CodinomeAutorizado", handleCodinomeAutorizado);
-
-            contract.off("VotacaoJaAtiva", handleVotacaoAtiva); 
             contract.on("VotacaoJaAtiva", handleVotacaoAtiva);
-
-            contract.off("VotacaoJaDesativada", handleVotacaoDesativada); 
             contract.on("VotacaoJaDesativada", handleVotacaoDesativada);
+            contract.on("ApenasOwnerOrProfessora",handleApenasOwnerOrProfessora);
+            contract.on("ApenasVotanteAutorizado",handleApenasVotanteAutorizado);
+            contract.on("ApenasCodinomeValido",handleApenasCodinomeValido);
+            contract.on("EnderecoInvalido",handleEnderecoInvalido);
+            contract.on("VotouEmSi",handleVotouEmSi);
+            contract.on("TuringAcimaLimite",handleTuringAcimaLimite);
+            contract.on("JaVotouNoCodinome",handleJaVotouNoCodinome);
 
             return () => {
-                contract.off("VotoEmitido", handleVoteCast);
+                contract.off("VotoEmitido", handleVotoEmitido);
                 contract.off("TokenEmitido", handleTokenEmitido);
                 contract.off("RecompensaEmitida", handleRecompensaEmitida);
-                contract.off("CodinomeAutorizado", handleCodinomeAutorizado);
                 contract.off("VotacaoJaAtiva", handleVotacaoAtiva);
                 contract.off("VotacaoJaDesativada", handleVotacaoDesativada);
+                contract.off("ApenasOwnerOrProfessora",handleApenasOwnerOrProfessora);
+                contract.off("ApenasVotanteAutorizado",handleApenasVotanteAutorizado);
+                contract.off("ApenasCodinomeValido",handleApenasCodinomeValido);
+                contract.off("EnderecoInvalido",handleEnderecoInvalido);
+                contract.off("VotouEmSi",handleVotouEmSi);
+                contract.off("TuringAcimaLimite",handleTuringAcimaLimite);
+                contract.off("JaVotouNoCodinome",handleJaVotouNoCodinome);
             };
         }
     }, [contract, updateRanking]);
@@ -140,8 +171,7 @@ export default function TuringDapp() {
                 await tx.wait();
                 alert("Token emitido com sucesso!");
             } catch (error) {
-                console.error("Erro ao emitir token:", error);
-                alert("Falha ao emitir token. Verifique seu saldo e tente novamente.");
+                alert("Falha ao emitir token. Verifique o terminal do hardhat.");
             }
         }
     };
@@ -162,8 +192,7 @@ export default function TuringDapp() {
                 await tx.wait();
                 alert("Voto registrado com sucesso!");
             } catch (error) {
-                console.error("Erro ao votar:", error);
-                alert("Falha ao votar. Verifique seu saldo e tente novamente.");
+                alert("Falha ao votar. Verifique o terminal do hardhat.");
             }
         }
     };
@@ -175,8 +204,7 @@ export default function TuringDapp() {
                 await tx.wait();
                 alert("Votação ativada!");
             } catch (error) {
-                console.error("Erro ao ativar votação:", error);
-                alert("Erro ao ativar a votação. Tente novamente.");
+                alert("Falha ao ativar votação. Verifique o terminal do hardhat.");
             }
         }
     };
@@ -193,8 +221,7 @@ export default function TuringDapp() {
                 await tx.wait();
                 alert("Votação desativada!");
             } catch (error) {
-                console.error("Erro ao desativar votação:", error);
-                alert("Erro ao desativar a votação. Tente novamente.");
+                alert("Falha ao desativar votação. Verifique o terminal do hardhat.");
             }
         }
     };    
