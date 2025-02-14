@@ -37,7 +37,7 @@ contract TuringToken is ERC20 {
 
     mapping (string => address) codinameAdresses;
     mapping (string => bool) hasVoted;
-    mapping (string => uint256) public codinameTurings;
+    mapping (address => uint256) public AddressTurings;
 
     bool public votingEnabled;
 
@@ -51,7 +51,7 @@ contract TuringToken is ERC20 {
     event ApenasCodinomeValido(string indexed codiname);
     event EnderecoInvalido(string indexed codiname);
     event VotouEmSi();
-    event TuringAcimaLimite(uint256 quantidade);
+    event TuringAcimaLimite();
     event JaVotouNoCodinome(string indexed codiname);
 
 
@@ -131,7 +131,7 @@ contract TuringToken is ERC20 {
 
     modifier isTuringQuantityValid(uint256 quantity) {
         if (quantity > 2 * 10**18){
-            emit TuringAcimaLimite(quantity / (10**18));
+            emit TuringAcimaLimite();
         }
         require(quantity <= 2 * 10**18,"Quantidade de Turing acima do permitido.");
         _;
@@ -159,9 +159,12 @@ contract TuringToken is ERC20 {
         address receiver = codinameAdresses[codiname];
         require(receiver != address(0), "Codinome invalido.");
         _mint(receiver, amount);
+
+        //uint256 converted_amount = amount / (10**18);
+        AddressTurings[receiver] += amount;
         
         // Emitindo evento de emissão de tokens
-        emit TokenEmitido(codiname, (amount/(10**18)));
+        emit TokenEmitido(codiname, amount);
     }
 
     function vote(string memory codiname, uint256 quantity)
@@ -172,13 +175,13 @@ contract TuringToken is ERC20 {
         hasVoted[codiname] = true;
 
         _mint(receiver, quantity);
-        uint256 converted_quantity = quantity / (10**18);
-        codinameTurings[codiname] += converted_quantity;
-        emit VotoEmitido(codiname, converted_quantity);
+        //uint256 converted_quantity = quantity / (10**18);
+        AddressTurings[receiver] += quantity;
+        emit VotoEmitido(codiname, quantity);
 
-        uint256 casaDecimal = 10;
-        uint256 recompensa = (2 / casaDecimal);
+        uint256 recompensa = (2 * (10**17));
         _mint(msg.sender, recompensa);
+        AddressTurings[msg.sender] += recompensa;
         emit RecompensaEmitida(recompensa);
 
     }
@@ -190,6 +193,6 @@ contract TuringToken is ERC20 {
 
      // Função para obter os votos de um codiname específico
     function getTuringsForCodiname(string memory codiname) public view returns (uint256) {
-        return codinameTurings[codiname];
+        return AddressTurings[codinameAdresses[codiname]];
     }
 }

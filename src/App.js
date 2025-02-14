@@ -5,13 +5,15 @@ import TokenArtifact from "./artifacts/contracts/TuringToken.sol/TuringToken.jso
 
 const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Endereço do contrato
 const contractABI = TokenArtifact.abi;
+const decimals = 2;
 
 export default function TuringDapp() {
     const [contract, setContract] = useState(null);
     const [codename, setCodename] = useState("");
     const [amount, setAmount] = useState("");
     const [ranking, setRanking] = useState([]);
-    const [account, setAccount] = useState(null); // Estado para armazenar a conta conectada
+    const [account, setAccount] = useState(null);
+    const [message, setMessage] = useState("");
 
     // Função para conectar ao MetaMask
     const connectMetaMask = async () => {
@@ -61,8 +63,9 @@ export default function TuringDapp() {
                 // Pegando os votos para cada codiname
                 const rankingData = await Promise.all(
                     names.map(async (codiname) => {
-                        const votes = await contract.getTuringsForCodiname(codiname, { blockTag: "latest" });
-                        return { codiname, votes: votes.toString() }; // Convertendo os votos para o formato legível
+                        const votes = await contract.getTuringsForCodiname(codiname);
+                        let amount_parsed = parseFloat(ethers.utils.formatUnits(votes, 18)).toFixed(3)
+                        return { codiname, votes: amount_parsed }; // Convertendo os votos para o formato legível
                     })
                 );
 
@@ -81,16 +84,21 @@ export default function TuringDapp() {
             updateRanking();
 
             const handleVotoEmitido = (codiname, amount) => {
-                console.log(`Voto emitido para ${codiname}: ${amount} Turings`);
+                let amount_parsed = parseFloat(ethers.utils.formatUnits(amount, 18)).toFixed(3)
+                console.log(`Voto emitido para ${codiname.toString()}: ${amount_parsed} Turings`);
                 updateRanking();
             };
 
             const handleTokenEmitido = (codiname, amount) => {
-                console.log(`Token emitido para ${codiname}: ${amount} Turings`);
+                let amount_parsed = parseFloat(ethers.utils.formatUnits(amount, 18)).toFixed(3)
+                console.log(`Token emitido para ${codiname}: ${amount_parsed} Turings`);
+                updateRanking();
             };
 
             const handleRecompensaEmitida = (amount) => {
-                console.log(`Recompensa de ${amount} Turings emitida`);
+                let amount_parsed = parseFloat(ethers.utils.formatUnits(amount, 18)).toFixed(3)
+                console.log(`Recompensa de ${amount_parsed} Turings emitida`);
+                updateRanking();
             };
 
             const handleVotacaoAtiva = () => {
@@ -121,7 +129,7 @@ export default function TuringDapp() {
                 console.log("Nao eh possivel votar em si mesmo.");
             };
 
-            const handleTuringAcimaLimite = (quantidade) => {
+            const handleTuringAcimaLimite = () => {
                 console.log("Quantidade de Turing acima do permitido");
             };
 
